@@ -1,0 +1,68 @@
+# codex.yaml
+
+codex_version: 1
+
+project:
+  name: YOUR_REPO_NAME
+  label: "YOUR HUMAN-FRIENDLY LABEL"
+  language: python
+  entry_package: YOUR_TOP_LEVEL_PACKAGE  # e.g. core or your_pkg
+
+environments:
+  default:
+    python: "3.11"
+    extras: ["dev"]        # so `pip install .[dev]` gets pytest, numpy, pandas, etc.
+    env:
+      APP_ENV: "lab"
+      LOG_LEVEL: "INFO"
+
+test_tiers:
+  unit:
+    description: "Fast, pure unit tests (no network, minimal I/O)."
+    discovery:
+      type: pytest
+      paths: ["tests/unit"]
+      markers_any: ["unit"]
+    max_runtime_seconds: 60
+    critical: true
+
+  integration:
+    description: "Module-to-module wiring / core pipelines."
+    discovery:
+      type: pytest
+      paths: ["tests/integration"]
+      markers_any: ["integration"]
+    max_runtime_seconds: 180
+    depends_on: ["unit"]
+
+  scenario:
+    description: "End-to-end scenarios on sample/snapshot data."
+    discovery:
+      type: pytest
+      paths: ["tests/scenario"]
+      markers_any: ["scenario"]
+    max_runtime_seconds: 600
+    depends_on: ["integration"]
+
+  stress:
+    description: "Long-run / perf / backtests."
+    discovery:
+      type: pytest
+      paths: ["tests/stress"]
+      markers_any: ["stress"]
+    max_runtime_seconds: 3600
+    depends_on: ["scenario"]
+    default_enabled: false
+
+combinations:
+  smoke:
+    tiers: ["unit"]
+
+  standard:
+    tiers: ["unit", "integration"]
+
+  full_day:
+    tiers: ["unit", "integration", "scenario"]
+
+  nightly:
+    tiers: ["unit", "integration", "scenario", "stress"]
