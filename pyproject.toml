@@ -48,8 +48,9 @@ streamlit = [
 Homepage = "https://github.com/cwester75/nonstationarity_toolbox"
 Repository = "https://github.com/cwester75/nonstationarity_toolbox"
 
-[tool.setuptools]
-packages = ["nonstationarity_toolbox", "nonstationarity_toolbox.diagnostics", "nonstationarity_toolbox.models", "nonstationarity_toolbox.utils", "nonstationarity_toolbox.workflows", "nonstationarity_toolbox.interface"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nonstationarity_toolbox*"]
 
 [tool.black]
 line-length = 100
