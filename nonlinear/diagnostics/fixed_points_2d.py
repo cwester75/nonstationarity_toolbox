@@ -1,4 +1,37 @@
 import numpy as np
+from scipy.optimize import root
+
+
+def find_fixed_point(map_obj, guess):
+    """Find a single fixed point of a 2-D map using scipy.optimize.root.
+
+    Args:
+        map_obj: Map2D instance with step(state) method.
+        guess: initial guess as (x, y).
+
+    Returns:
+        Fixed point as numpy array.
+    """
+    def F(v):
+        mapped = map_obj.step(v)
+        return [mapped[0] - v[0], mapped[1] - v[1]]
+
+    sol = root(F, guess)
+    return sol.x
+
+
+def stability(map_obj, state):
+    """Compute eigenvalues of the Jacobian at a state (stability analysis).
+
+    Args:
+        map_obj: Map2D instance with jacobian(state) method.
+        state: point (x, y) to evaluate at.
+
+    Returns:
+        Eigenvalues of the Jacobian.
+    """
+    J = map_obj.jacobian(state)
+    return np.linalg.eigvals(J)
 
 
 def classify_fixed_point_2d(jacobian):

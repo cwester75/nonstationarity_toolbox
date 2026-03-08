@@ -32,6 +32,18 @@ def plot_attractor(map2d, state0, n=5000, transient=500, ax=None, **kwargs):
     return ax
 
 
+def plot_phase_portrait(xs, ys, ax=None):
+    """Plot a phase portrait from pre-computed x and y arrays."""
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    ax.plot(xs, ys, '.', markersize=1)
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_title('Phase Portrait')
+    return ax
+
+
 def plot_multiple_orbits(map2d, initial_conditions, n=500, ax=None):
     """Plot multiple orbits on the same phase portrait."""
     if ax is None:
