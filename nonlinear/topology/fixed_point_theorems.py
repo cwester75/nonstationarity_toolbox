@@ -4,23 +4,29 @@ import numpy as np
 def banach_iteration(f, x0, n=100, tol=1e-12):
     """Demonstrate Banach fixed point theorem by iterating a contraction mapping.
 
+    Works for both scalar and vector-valued mappings.
     Returns (fixed_point, trajectory, converged, contraction_ratios).
     """
-    traj = [np.array(x0, dtype=float)]
+    x = float(x0) if np.ndim(x0) == 0 else np.array(x0, dtype=float)
+    traj = [x]
     ratios = []
-    x = np.array(x0, dtype=float)
 
     for i in range(n):
-        x_new = np.array(f(x), dtype=float)
+        x_new = f(x)
+        if np.ndim(x_new) == 0:
+            x_new = float(x_new)
+        else:
+            x_new = np.array(x_new, dtype=float)
         traj.append(x_new)
 
-        if i > 0:
-            d_new = np.linalg.norm(x_new - x)
-            d_old = np.linalg.norm(x - traj[-3])
-            if d_old > 0:
-                ratios.append(d_new / d_old)
+        diff = np.linalg.norm(np.asarray(x_new) - np.asarray(x))
 
-        if np.linalg.norm(x_new - x) < tol:
+        if i > 0:
+            d_old = np.linalg.norm(np.asarray(x) - np.asarray(traj[-3]))
+            if d_old > 0:
+                ratios.append(diff / d_old)
+
+        if diff < tol:
             return x_new, traj, True, ratios
 
         x = x_new
