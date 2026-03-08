@@ -2,15 +2,28 @@ import numpy as np
 
 
 def newton_complex_step(f, df, z):
-    """Single Newton iteration in the complex plane."""
-    return z - f(z) / df(z)
+    """Single Newton iteration in the complex plane.
+
+    Raises ZeroDivisionError if df(z) == 0.
+    """
+    dfz = df(z)
+    if dfz == 0:
+        raise ZeroDivisionError(f"Derivative is zero at z={z}")
+    return z - f(z) / dfz
 
 
 def newton_complex_iterate(f, df, z0, max_iter=100, tol=1e-10):
-    """Run Newton's method in the complex plane."""
+    """Run Newton's method in the complex plane.
+
+    Returns (z, iterations, converged).
+    If the derivative is zero, iteration stops and returns (z, i, False).
+    """
     z = z0
     for i in range(max_iter):
-        dz = f(z) / df(z)
+        dfz = df(z)
+        if dfz == 0:
+            return z, i, False
+        dz = f(z) / dfz
         z = z - dz
         if abs(dz) < tol:
             return z, i + 1, True

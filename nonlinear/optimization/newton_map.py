@@ -2,16 +2,29 @@ import numpy as np
 
 
 def newton_step(f, df, x):
-    """Single Newton iteration: x_{n+1} = x - f(x)/f'(x)."""
-    return x - f(x) / df(x)
+    """Single Newton iteration: x_{n+1} = x - f(x)/f'(x).
+
+    Raises ZeroDivisionError if df(x) == 0.
+    """
+    dfx = df(x)
+    if dfx == 0:
+        raise ZeroDivisionError(f"Derivative is zero at x={x}")
+    return x - f(x) / dfx
 
 
 def newton_iterate(f, df, x0, n=100, tol=1e-12):
-    """Run Newton's method, returning trajectory and convergence info."""
+    """Run Newton's method, returning trajectory and convergence info.
+
+    Returns (trajectory, converged, iterations).
+    If the derivative is zero, iteration stops and returns (traj, False, i).
+    """
     traj = [x0]
     x = x0
     for i in range(n):
-        dx = f(x) / df(x)
+        dfx = df(x)
+        if dfx == 0:
+            return traj, False, i
+        dx = f(x) / dfx
         x = x - dx
         traj.append(x)
         if abs(dx) < tol:

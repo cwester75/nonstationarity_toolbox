@@ -1,6 +1,7 @@
+import pytest
 import numpy as np
-from nonlinear.optimization.newton_map import newton_iterate
-from nonlinear.optimization.newton_complex import newton_complex_iterate
+from nonlinear.optimization.newton_map import newton_step, newton_iterate
+from nonlinear.optimization.newton_complex import newton_complex_step, newton_complex_iterate
 from nonlinear.optimization.newton_nd import newton_nd_iterate, numerical_jacobian
 
 
@@ -49,3 +50,32 @@ def test_numerical_jacobian():
     assert abs(J[0, 1]) < 1e-5
     assert abs(J[1, 0] - 3.0) < 1e-5
     assert abs(J[1, 1] - 2.0) < 1e-5
+
+
+def test_newton_step_zero_derivative():
+    f = lambda x: x ** 2
+    df = lambda x: 2 * x
+    with pytest.raises(ZeroDivisionError):
+        newton_step(f, df, 0.0)
+
+
+def test_newton_iterate_zero_derivative_graceful():
+    # x^3 has df=0 at x=0; starting at 0 should not converge, not crash
+    f = lambda x: x ** 3
+    df = lambda x: 3 * x ** 2
+    traj, converged, iters = newton_iterate(f, df, 0.0)
+    assert not converged
+
+
+def test_newton_complex_step_zero_derivative():
+    f = lambda z: z ** 2
+    df = lambda z: 2 * z
+    with pytest.raises(ZeroDivisionError):
+        newton_complex_step(f, df, 0 + 0j)
+
+
+def test_newton_complex_iterate_zero_derivative_graceful():
+    f = lambda z: z ** 3
+    df = lambda z: 3 * z ** 2
+    z, iters, converged = newton_complex_iterate(f, df, 0 + 0j)
+    assert not converged
