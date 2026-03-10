@@ -1,9 +1,12 @@
 """
 Nonlinear time-series diagnostics for financial and scientific data.
 
-Provides correlation, Hurst exponent (R/S method), Higuchi fractal dimension,
-Lyapunov exponent (Rosenstein method), and Shannon entropy complexity measures.
+Provides correlation, Hurst exponent (R/S and DFA methods), Higuchi fractal
+dimension, Lyapunov exponent (Rosenstein method), Shannon entropy, and
+permutation entropy complexity measures.
 """
+
+from itertools import permutations as _permutations
 
 import numpy as np
 from numpy.linalg import norm
@@ -196,3 +199,123 @@ class TimeSeriesDiagnostics:
         hist, _ = np.histogram(series, bins=bins, density=True)
         hist = hist + 1e-12
         return entropy(hist)
+
+    # ---------------------------------------------------------
+    # HURST EXPONENT (DFA METHOD)
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def hurst_dfa(series, min_scale=4, max_scale=None, n_scales=20):
+        """Estimate the Hurst exponent via Detrended Fluctuation Analysis.
+
+        More robust than the R/S method for non-stationary series.
+
+        Parameters
+        ----------
+        series : array-like
+            Input time series (at least 32 observations recommended).
+        min_scale : int
+            Smallest segment length (default 4).
+        max_scale : int or None
+            Largest segment length (default ``N // 4``).
+        n_scales : int
+            Number of log-spaced scales to evaluate (default 20).
+
+        Returns
+        -------
+        float
+            Estimated Hurst exponent (slope of log-log fluctuation plot).
+        """
+        x = np.asarray(series, dtype=float)
+        N = len(x)
+        if max_scale is None:
+            max_scale = N // 4
+        if max_scale < min_scale:
+            raise ValueError("Series too short for DFA")
+
+        # Cumulative sum of mean-subtracted series (profile)
+        y = np.cumsum(x - np.mean(x))
+
+        scales = np.unique(
+            np.logspace(
+                np.log10(min_scale), np.log10(max_scale), n_scales
+            ).astype(int)
+        )
+        scales = scales[scales >= min_scale]
+
+        fluctuations = []
+        for s in scales:
+            n_seg = N // s
+            if n_seg < 1:
+                continue
+            rms_vals = []
+            for v in range(n_seg):
+                seg = y[v * s: (v + 1) * s]
+                # Linear detrending
+                t = np.arange(s)
+                coeffs = np.polyfit(t, seg, 1)
+                trend = np.polyval(coeffs, t)
+                rms_vals.append(np.sqrt(np.mean((seg - trend) ** 2)))
+            fluctuations.append(np.mean(rms_vals))
+
+        if len(fluctuations) < 2:
+            raise ValueError("Not enough valid scales for DFA")
+
+        log_s = np.log(scales[: len(fluctuations)])
+        log_f = np.log(fluctuations)
+        H = np.polyfit(log_s, log_f, 1)[0]
+        return H
+
+    # ---------------------------------------------------------
+    # PERMUTATION ENTROPY
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def permutation_entropy(series, order=3, delay=1, normalize=True):
+        """Compute the permutation entropy of a time series.
+
+        Quantifies the complexity of the temporal ordering structure.
+
+        Parameters
+        ----------
+        series : array-like
+            Input time series.
+        order : int
+            Embedding order (pattern length, default 3).
+        delay : int
+            Time delay between elements in each pattern (default 1).
+        normalize : bool
+            If *True*, divide by ``log(order!)`` to return a value in [0, 1].
+
+        Returns
+        -------
+        float
+            Permutation entropy (normalised if requested).
+        """
+        x = np.asarray(series, dtype=float)
+        N = len(x)
+        n_patterns = N - (order - 1) * delay
+
+        if n_patterns < 1:
+            raise ValueError("Series too short for the requested order/delay")
+
+        # Count ordinal patterns
+        pattern_counts = {}
+        for i in range(n_patterns):
+            window = x[i: i + order * delay: delay]
+            # Rank the values (argsort of argsort gives ranks)
+            pattern = tuple(np.argsort(np.argsort(window)))
+            pattern_counts[pattern] = pattern_counts.get(pattern, 0) + 1
+
+        total = sum(pattern_counts.values())
+        probs = np.array([c / total for c in pattern_counts.values()])
+
+        H = -np.sum(probs * np.log(probs))
+
+        if normalize:
+            import math
+            H_max = np.log(math.factorial(order))
+            if H_max > 0:
+                H /= H_max
+
+        return H

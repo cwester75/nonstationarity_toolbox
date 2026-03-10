@@ -158,3 +158,65 @@ class TestRollingDiagnostics:
         x = np.arange(100, dtype=float)
         rd = RollingDiagnostics(x)
         assert rd.correlation(x) == pytest.approx(1.0)
+
+
+# ---------------------------------------------------------------------------
+# Hurst DFA
+# ---------------------------------------------------------------------------
+
+class TestHurstDFA:
+    def test_random_walk_dfa(self):
+        """A random walk (integrated noise) has DFA H ~ 1.5.
+        White noise (not integrated) has DFA H ~ 0.5."""
+        rng = np.random.default_rng(42)
+        white_noise = rng.standard_normal(500)
+        h = TimeSeriesDiagnostics.hurst_dfa(white_noise)
+        assert 0.2 < h < 1.0
+
+    def test_trending_dfa(self):
+        series = _trending(500)
+        h = TimeSeriesDiagnostics.hurst_dfa(series)
+        assert h > 0.4
+
+    def test_short_series_raises(self):
+        with pytest.raises(ValueError):
+            TimeSeriesDiagnostics.hurst_dfa(np.zeros(5))
+
+
+# ---------------------------------------------------------------------------
+# Permutation entropy
+# ---------------------------------------------------------------------------
+
+class TestPermutationEntropy:
+    def test_normalized_range(self):
+        """Normalised permutation entropy should be in [0, 1]."""
+        series = _brownian(300)
+        pe = TimeSeriesDiagnostics.permutation_entropy(series, order=3)
+        assert 0.0 <= pe <= 1.0
+
+    def test_random_high_entropy(self):
+        """White noise should have near-maximum permutation entropy."""
+        rng = np.random.default_rng(0)
+        noise = rng.standard_normal(5000)
+        pe = TimeSeriesDiagnostics.permutation_entropy(noise, order=4)
+        assert pe > 0.9
+
+    def test_monotonic_low_entropy(self):
+        """A monotone series has only one pattern => low entropy."""
+        series = np.arange(100, dtype=float)
+        pe = TimeSeriesDiagnostics.permutation_entropy(series, order=3)
+        assert pe < 0.1
+
+    def test_unnormalized(self):
+        series = _brownian(300)
+        pe = TimeSeriesDiagnostics.permutation_entropy(
+            series, order=3, normalize=False
+        )
+        # Unnormalized should be > 0 and typically > 1
+        assert pe > 0
+
+    def test_short_series_raises(self):
+        with pytest.raises(ValueError):
+            TimeSeriesDiagnostics.permutation_entropy(
+                np.array([1.0, 2.0]), order=5
+            )
