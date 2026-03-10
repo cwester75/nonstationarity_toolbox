@@ -1,8 +1,9 @@
 import numpy as np
+from scipy.optimize import root
 
 
 def jacobian(system, x, y, eps=1e-6):
-    """Compute the Jacobian of the vector field via finite differences.
+    """Compute the Jacobian of the vector field via central differences.
 
     Parameters
     ----------
@@ -16,24 +17,48 @@ def jacobian(system, x, y, eps=1e-6):
     -------
     ndarray, shape (2, 2)
     """
-    fx, gx = system.vector_field(x, y)
+    fx1 = system.vector_field(x + eps, y)
+    fx2 = system.vector_field(x - eps, y)
 
-    fx_dx, _ = system.vector_field(x + eps, y)
-    fx_dy, _ = system.vector_field(x, y + eps)
-    _, gx_dx = system.vector_field(x + eps, y)
-    _, gx_dy = system.vector_field(x, y + eps)
+    fy1 = system.vector_field(x, y + eps)
+    fy2 = system.vector_field(x, y - eps)
 
-    dfdx = (fx_dx - fx) / eps
-    dfdy = (fx_dy - fx) / eps
-    dgdx = (gx_dx - gx) / eps
-    dgdy = (gx_dy - gx) / eps
+    dfdx = (fx1[0] - fx2[0]) / (2 * eps)
+    dfdy = (fy1[0] - fy2[0]) / (2 * eps)
+
+    dgdx = (fx1[1] - fx2[1]) / (2 * eps)
+    dgdy = (fy1[1] - fy2[1]) / (2 * eps)
 
     return np.array([[dfdx, dfdy],
                      [dgdx, dgdy]])
 
 
-def find_fixed_points(system, initial_guesses, max_iter=50, tol=1e-10):
-    """Locate fixed points of the system using Newton's method.
+def find_fixed_point(system, guess):
+    """Find a single fixed point starting from *guess* using SciPy root.
+
+    Parameters
+    ----------
+    system : AutonomousSystem2D
+    guess : array-like, shape (2,)
+
+    Returns
+    -------
+    ndarray or None
+        The fixed point, or None if the solver did not converge.
+    """
+    def F(v):
+        return system.vector_field(v[0], v[1])
+
+    sol = root(F, guess)
+
+    if sol.success:
+        return sol.x
+
+    return None
+
+
+def find_fixed_points(system, initial_guesses):
+    """Locate fixed points of the system using SciPy root finding.
 
     Solves f(x,y) = 0, g(x,y) = 0.
 
@@ -42,10 +67,6 @@ def find_fixed_points(system, initial_guesses, max_iter=50, tol=1e-10):
     system : AutonomousSystem2D
     initial_guesses : list of tuple
         Starting points [(x0, y0), ...].
-    max_iter : int
-        Maximum Newton iterations per guess.
-    tol : float
-        Convergence tolerance on the residual norm.
 
     Returns
     -------
@@ -55,26 +76,9 @@ def find_fixed_points(system, initial_guesses, max_iter=50, tol=1e-10):
     fixed_points = []
 
     for guess in initial_guesses:
-        x, y = float(guess[0]), float(guess[1])
-
-        for _ in range(max_iter):
-            fx, fy = system.vector_field(x, y)
-            residual = np.array([fx, fy])
-            if np.linalg.norm(residual) < tol:
-                break
-
-            J = jacobian(system, x, y)
-            try:
-                delta = np.linalg.solve(J, -residual)
-            except np.linalg.LinAlgError:
-                break
-
-            x += delta[0]
-            y += delta[1]
-
-        fx, fy = system.vector_field(x, y)
-        if np.linalg.norm([fx, fy]) < tol * 100:
-            fixed_points.append(np.array([x, y]))
+        fp = find_fixed_point(system, guess)
+        if fp is not None:
+            fixed_points.append(fp)
 
     # Remove duplicates
     unique = []

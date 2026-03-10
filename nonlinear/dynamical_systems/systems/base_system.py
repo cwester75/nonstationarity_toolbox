@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import numpy as np
+from typing import Callable, Dict
 
 
 class AutonomousSystem2D:
@@ -14,26 +17,31 @@ class AutonomousSystem2D:
         Right-hand side for dx/dt.  Signature: f(x, y, params) -> float.
     g : callable
         Right-hand side for dy/dt.  Signature: g(x, y, params) -> float.
-    parameters : dict
+    parameters : dict, optional
         Dictionary of system parameters passed to f and g.
     """
 
-    def __init__(self, f, g, parameters=None):
+    def __init__(
+        self,
+        f: Callable,
+        g: Callable,
+        parameters: Dict | None = None,
+    ):
         self.f = f
         self.g = g
         self.params = parameters if parameters is not None else {}
 
-    def vector_field(self, x, y):
+    def vector_field(self, x: float, y: float) -> np.ndarray:
         """Evaluate the vector field at (x, y).
 
         Returns
         -------
-        tuple of float
-            (dx/dt, dy/dt)
+        ndarray, shape (2,)
+            [dx/dt, dy/dt]
         """
         dx = self.f(x, y, self.params)
         dy = self.g(x, y, self.params)
-        return dx, dy
+        return np.array([dx, dy])
 
     def phase_portrait(self, x_range, y_range, nx=20, ny=20):
         """Generate vector field data on a grid for visualisation.
@@ -59,5 +67,7 @@ class AutonomousSystem2D:
         DY = np.zeros_like(Y)
         for i in range(ny):
             for j in range(nx):
-                DX[i, j], DY[i, j] = self.vector_field(X[i, j], Y[i, j])
+                v = self.vector_field(X[i, j], Y[i, j])
+                DX[i, j] = v[0]
+                DY[i, j] = v[1]
         return X, Y, DX, DY

@@ -16,25 +16,24 @@ def classify_fixed_point(system, point):
     -------
     str
         One of: "stable node", "unstable node", "saddle",
-        "stable spiral", "unstable spiral", "center".
+        "stable spiral", "unstable spiral", "center", "undetermined".
     """
-    x, y = point[0], point[1]
-    J = jacobian(system, x, y)
+    J = jacobian(system, point[0], point[1])
     eigenvalues = np.linalg.eigvals(J)
 
-    l1, l2 = eigenvalues
+    r1, r2 = eigenvalues
 
     # Check for complex eigenvalues (spirals or center)
-    if np.iscomplex(l1) or abs(l1.imag) > 1e-10:
-        if l1.real < -1e-10:
+    if np.iscomplex(r1) or abs(r1.imag) > 1e-10:
+        if r1.real < -1e-10:
             return "stable spiral"
-        elif l1.real > 1e-10:
+        elif r1.real > 1e-10:
             return "unstable spiral"
         else:
             return "center"
 
     # Real eigenvalues
-    r1, r2 = l1.real, l2.real
+    r1, r2 = r1.real, r2.real
 
     if r1 * r2 < 0:
         return "saddle"
@@ -45,4 +44,4 @@ def classify_fixed_point(system, point):
     if r1 > 0 and r2 > 0:
         return "unstable node"
 
-    return "non-isolated"
+    return "undetermined"

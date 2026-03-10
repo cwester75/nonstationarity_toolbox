@@ -1,11 +1,50 @@
 import numpy as np
 
 
+def rk4_step(system, x, y, dt):
+    """Advance one RK4 step.
+
+    Parameters
+    ----------
+    system : AutonomousSystem2D
+    x, y : float
+        Current state.
+    dt : float
+        Time step.
+
+    Returns
+    -------
+    tuple of float
+        (x_new, y_new)
+    """
+    k1 = system.vector_field(x, y)
+
+    k2 = system.vector_field(
+        x + dt * k1[0] / 2,
+        y + dt * k1[1] / 2,
+    )
+
+    k3 = system.vector_field(
+        x + dt * k2[0] / 2,
+        y + dt * k2[1] / 2,
+    )
+
+    k4 = system.vector_field(
+        x + dt * k3[0],
+        y + dt * k3[1],
+    )
+
+    x_new = x + dt * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]) / 6
+    y_new = y + dt * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]) / 6
+
+    return x_new, y_new
+
+
 class RK4Integrator:
     """Fourth-order Runge-Kutta integrator for AutonomousSystem2D."""
 
     def step(self, system, x, y, dt):
-        """Advance one RK4 step.
+        """Advance one RK4 step (class-based interface).
 
         Parameters
         ----------
@@ -20,30 +59,10 @@ class RK4Integrator:
         tuple of float
             (x_new, y_new)
         """
-        k1x, k1y = system.vector_field(x, y)
-
-        k2x, k2y = system.vector_field(
-            x + dt * k1x / 2,
-            y + dt * k1y / 2,
-        )
-
-        k3x, k3y = system.vector_field(
-            x + dt * k2x / 2,
-            y + dt * k2y / 2,
-        )
-
-        k4x, k4y = system.vector_field(
-            x + dt * k3x,
-            y + dt * k3y,
-        )
-
-        x_new = x + dt * (k1x + 2 * k2x + 2 * k3x + k4x) / 6
-        y_new = y + dt * (k1y + 2 * k2y + 2 * k3y + k4y) / 6
-
-        return x_new, y_new
+        return rk4_step(system, x, y, dt)
 
 
-def simulate(system, x0, y0, steps, dt):
+def simulate(system, x0, y0, steps=5000, dt=0.01):
     """Simulate a trajectory using RK4 integration.
 
     Parameters
@@ -58,14 +77,15 @@ def simulate(system, x0, y0, steps, dt):
 
     Returns
     -------
-    ndarray, shape (steps+1, 2)
-        Trajectory array with columns [x, y].
+    ndarray, shape (steps, 2)
+        Trajectory array with columns [x, y].  Row 0 is the initial
+        condition; row ``steps-1`` is the state after ``steps-1`` steps.
     """
-    integrator = RK4Integrator()
-    traj = np.empty((steps + 1, 2))
-    traj[0] = (x0, y0)
     x, y = float(x0), float(y0)
+    traj = np.zeros((steps, 2))
+
     for i in range(steps):
-        x, y = integrator.step(system, x, y, dt)
-        traj[i + 1] = (x, y)
+        traj[i] = [x, y]
+        x, y = rk4_step(system, x, y, dt)
+
     return traj
