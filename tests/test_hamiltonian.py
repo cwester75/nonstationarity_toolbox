@@ -71,6 +71,59 @@ def test_double_well_two_minima():
     assert e_min < e_origin
 
 
+# --- Analytical vs numerical gradients ---
+
+
+def test_analytical_gradients_match_numerical():
+    """Analytical derivatives should match finite-difference approximation."""
+    sys_analytical = harmonic_oscillator(m=2.0, k=3.0)
+    # Build a numerical-only system from same Hamiltonian
+    sys_numerical = HamiltonianSystem(sys_analytical.H, ndof=1)
+    q = np.array([1.5])
+    p = np.array([2.5])
+    np.testing.assert_allclose(
+        sys_analytical.dq_dt(q, p), sys_numerical.dq_dt(q, p), atol=1e-5
+    )
+    np.testing.assert_allclose(
+        sys_analytical.dp_dt(q, p), sys_numerical.dp_dt(q, p), atol=1e-5
+    )
+
+
+def test_analytical_gradients_exact():
+    """Analytical dq/dt and dp/dt should be exact (no finite-diff error)."""
+    sys = harmonic_oscillator(m=1.0, k=1.0)
+    q = np.array([2.0])
+    p = np.array([3.0])
+    # dq/dt = p/m = 3.0 exactly
+    assert sys.dq_dt(q, p)[0] == 3.0
+    # dp/dt = -kq = -2.0 exactly
+    assert sys.dp_dt(q, p)[0] == -2.0
+
+
+def test_henon_heiles_analytical_gradients():
+    """Hénon-Heiles analytical gradients should match numerical."""
+    sys_a = henon_heiles()
+    sys_n = HamiltonianSystem(sys_a.H, ndof=2)
+    q = np.array([0.3, -0.2])
+    p = np.array([0.1, 0.4])
+    np.testing.assert_allclose(sys_a.dq_dt(q, p), sys_n.dq_dt(q, p), atol=1e-5)
+    np.testing.assert_allclose(sys_a.dp_dt(q, p), sys_n.dp_dt(q, p), atol=1e-5)
+
+
+def test_analytical_energy_conservation_much_tighter():
+    """Analytical gradients should give much better energy conservation."""
+    sys_a = harmonic_oscillator()
+    sys_n = HamiltonianSystem(sys_a.H, ndof=1)
+    q0 = np.array([1.0])
+    p0 = np.array([0.0])
+    q_a, p_a = integrate_hamiltonian(sys_a, q0, p0, dt=0.01, steps=10000)
+    q_n, p_n = integrate_hamiltonian(sys_n, q0, p0, dt=0.01, steps=10000)
+    _, var_a = check_energy_conservation(sys_a, q_a, p_a)
+    _, var_n = check_energy_conservation(sys_n, q_n, p_n)
+    # Analytical should be orders of magnitude better
+    assert var_a < var_n
+
+
 # --- Symplectic integrators ---
 
 
