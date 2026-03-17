@@ -21,3 +21,16 @@ from .dynamical_systems import (
     detect_homoclinic,
     detect_limit_cycle,
 )
+from .hamiltonian import (
+    HamiltonianSystem,
+    integrate_hamiltonian,
+    leapfrog_step,
+    stormer_verlet_step,
+    compute_poincare_section,
+    compute_action_variable,
+    check_energy_conservation,
+    hamiltonian_lyapunov,
+    classify_poincare_dynamics,
+    harmonic_oscillator,
+    henon_heiles,
+)
